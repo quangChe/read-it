@@ -6,7 +6,7 @@ import {
     Field,
     Ctx,
     ObjectType,
-	Query,
+    Query,
 } from "type-graphql";
 import argon2 from "argon2";
 import { MyContext } from "../types";
@@ -46,46 +46,48 @@ export class UserResolver {
         @Arg("options") options: UsernamePasswordInput,
         @Ctx() { em }: MyContext
     ) {
-		if (options.username.length <= 2) {
-			return {
-				errors: [
-					{
-						field: 'username',
-						message: "Username is too short"
-					}
-				]
-			}
-		}
+        if (options.username.length <= 2) {
+            return {
+                errors: [
+                    {
+                        field: "username",
+                        message: "Username is too short",
+                    },
+                ],
+            };
+        }
 
-		if (options.password.length <= 3) {
-			return {
-				errors: [
-					{
-						field: 'password',
-						message: "Password is too short"
-					}
-				]
-			}
-		}
+        if (options.password.length <= 3) {
+            return {
+                errors: [
+                    {
+                        field: "password",
+                        message: "Password is too short",
+                    },
+                ],
+            };
+        }
         const hashedPW = await argon2.hash(options.password);
         const user = em.create(User, {
             username: options.username,
             password: hashedPW,
-		});
-	
-		try {
-			await em.persistAndFlush(user);
-		} catch (err) { 
-			console.log(err);
-			if (err.code === "23505") {
-				return {
-					errors: [{
-						field: 'username',
-						message: 'Username already taken'
-					}]
-				}
-			}
-		}
+        });
+
+        try {
+            await em.persistAndFlush(user);
+        } catch (err) {
+            console.log(err);
+            if (err.code === "23505") {
+                return {
+                    errors: [
+                        {
+                            field: "username",
+                            message: "Username already taken",
+                        },
+                    ],
+                };
+            }
+        }
 
         return { user };
     }
@@ -93,7 +95,7 @@ export class UserResolver {
     @Mutation(() => UserResponse)
     async login(
         @Arg("options") options: UsernamePasswordInput,
-        @Ctx() { em }: MyContext
+        @Ctx() { em, req }: MyContext
     ) {
         const user = await em.findOne(User, { username: options.username });
         if (!user) {
@@ -101,7 +103,7 @@ export class UserResolver {
                 errors: [
                     {
                         field: "username",
-                        message: "Username does not exist"
+                        message: "Username does not exist",
                     },
                 ],
             };
@@ -112,20 +114,20 @@ export class UserResolver {
                 errors: [
                     {
                         field: "password",
-                        message: "Incorrect password entered"
+                        message: "Incorrect password entered",
                     },
                 ],
             };
         }
 
+		req.session.userId = user.id;
+		
         return { user };
-	}
-	
-	@Query(() => [User])
-	async getUsers(
-		@Ctx() { em }: MyContext
-	) {
-		const users = await em.find(User, {});
-		return users;
-	}
+    }
+
+    @Query(() => [User])
+    async getUsers(@Ctx() { em }: MyContext) {
+        const users = await em.find(User, {});
+        return users;
+    }
 }
